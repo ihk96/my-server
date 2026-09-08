@@ -1,0 +1,24 @@
+# 빌드 컨텍스트(docker build가 데몬으로 통째로 전송하는 파일 집합)에서 제외할 것들.
+# target/은 수 GB까지 자라기 때문에, 이 파일이 없으면 이미지 빌드가 아니라 "컨텍스트
+# 전송"만으로 수십 초가 날아간다.
+target/
+dist/
+.git/
+
+# .env에는 로컬 개발용 DATABASE_URL이 들어간다. 빌드 컨텍스트에 들어갈 이유가 없다.
+.env
+
+# 개발용 SQLite DB. 빌드에 전혀 필요 없고(스키마는 .sqlx/와 migrations/로 충분하다),
+# 들어가면 컨텍스트만 무거워진다. WAL 모드라 -wal/-shm도 함께 생긴다.
+dev.db
+dev.db-wal
+dev.db-shm
+
+# 이미지에 들어가야 할 이유가 없는 것들. 빼두면 이 파일들만 고쳤을 때 빌드 캐시가
+# 깨지지 않는다는 효과도 있다.
+Dockerfile
+.dockerignore
+README.md
+docs/
+.vscode/
+.idea/
