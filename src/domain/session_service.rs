@@ -36,9 +36,10 @@ pub async fn get_session(store: &dyn SessionStore, session_id: &str) -> Result<O
 
 #[cfg(test)]
 mod tests {
+
     use crate::store::session::MockSessionStore;
 
-use super::*;
+    use super::*;
 
     // [테스트 시나리오] 정상적으로 세션이 저장된다.
     #[tokio::test]
@@ -48,7 +49,9 @@ use super::*;
             .expect_insert_session()
             .withf(|session_record| session_record.user_id == "user_id")
             .times(1)
-            .returning(|session_record| Ok(session_record));
+            .returning(|session_record| {
+                Ok(session_record)
+            });
 
         let result = save_session(&store, "user_id", 30).await;
         assert!(result.is_ok());
@@ -57,4 +60,29 @@ use super::*;
         let session_id_hash = hex::encode(Sha256::digest(session_id.as_bytes()));
         assert_eq!(session_id_hash, session.id);
     }
+
+    // [테스트 시나리오] 주어진 session id를 정상적으로 해싱하고 store 조회가 호출된다.
+    #[tokio::test]
+    async fn get_sesssion_succeeds(){
+        let mut store = MockSessionStore::new();
+
+        let session_id = "session_id";
+        let session_id_hash = hex::encode(Sha256::digest(session_id.as_bytes()));
+
+        store
+            .expect_get_session_by_id()
+            .withf(move |hash| hash == session_id_hash)
+            .times(1)
+            .returning(|hash| Ok(Some(SessionRecord {
+                id: hash.to_string(),
+                user_id: "user_id".to_string(),
+                created_at: Utc::now(),
+                expires_at: Utc::now()
+            })));
+
+        let result = get_session(&store, session_id).await;
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_some());
+    }
+
 }

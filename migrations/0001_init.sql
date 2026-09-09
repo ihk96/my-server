@@ -27,3 +27,7 @@ create table sessions (
     expires_at text not null,
     last_accessed_at text not null
 );
+
+insert into users (id, login_id, password_hash, name, created_at, last_login_at)
+values ("7a1eea9d-bcf4-4b36-8654-faed03d2628b","dlsgur2323@gmail.com","$argon2id$v=19$m=19456,t=2,p=1$nDxra6QCAlHxWI4K65s2eQ$pqscUjpYPvbnlvXxMCk942sab9fqQY3OAMzQOq9O7oI", "김인혁", datetime('now'), null)
+

@@ -9,7 +9,9 @@
 mod example;
 mod health;
 mod login;
+mod user;
 pub mod rate_limit;
+pub mod auth;
 
 use std::{sync::Arc, time::Duration};
 
@@ -20,7 +22,7 @@ use axum::{
     Router,
 };
 use tower::ServiceBuilder;
-use tower_governor::GovernorLayer;
+use tower_governor::{GovernorLayer, governor::GovernorConfigBuilder, key_extractor::SmartIpKeyExtractor};
 use tower_http::{
     catch_panic::CatchPanicLayer,
     cors::CorsLayer,
@@ -53,7 +55,18 @@ pub fn build(
     // 정상적인 감시 트래픽이 리밋을 갉아먹는다. 더 나쁜 경우는 리밋에 걸린 헬스체크가
     // 429를 받아 "서비스가 죽었다"고 판정되면서, 부하가 몰린 순간에 재시작까지 유발하는
     // 것이다 — 막으려던 상황을 오히려 악화시킨다.
-    // let limited = example::routes().layer(GovernorLayer::new(rate_limit));
+    let limited = Router::new()
+        .merge(user::routes())
+        .layer(GovernorLayer::new(rate_limit));
+
+    let login_limit = GovernorConfigBuilder::default()
+        .period(Duration::from_secs(1))
+        .burst_size(1)
+        .key_extractor(SmartIpKeyExtractor)
+        .finish()
+        .context("failed to build the rate limiter configuration")?;
+    let login_limited = login::routes().layer(GovernorLayer::new(login_limit));
+
 
     // [설명] 오리진이 하나도 없으면 None이 되고, 아래 option_layer가 레이어를 통째로
     // 건너뛴다 — "허용 목록이 빈 CORS"를 붙여 모든 브라우저 요청을 막는 것과는 다르다.
@@ -61,8 +74,8 @@ pub fn build(
 
     let router = Router::new()
         .merge(health::routes())
-        .merge(login::routes())
-        // .merge(limited)
+        .merge(login_limited)
+        .merge(limited)
         .with_state(state)
         // [아키텍처] 미들웨어는 ServiceBuilder로 쌓는다. Router::layer를 여러 번 부르면
         // 나중에 붙인 것이 바깥이 되어 코드에 적힌 순서와 실행 순서가 뒤집히는데,

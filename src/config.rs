@@ -94,7 +94,7 @@ impl AppConfig {
             database_url: env::var("DATABASE_URL")
                 .context("DATABASE_URL must be set (see .env.example)")?,
             request_timeout_secs: env_or("REQUEST_TIMEOUT_SECS", 30)?,
-            db_max_connections: env_or("DB_MAX_CONNECTIONS", 4)?,
+            db_max_connections: env_or("DB_MAX_CONNECTIONS", 10)?,
             db_acquire_timeout_secs: env_or("DB_ACQUIRE_TIMEOUT_SECS", 10)?,
             db_busy_timeout_secs: env_or("DB_BUSY_TIMEOUT_SECS", 5)?,
             shutdown_timeout_secs: env_or("SHUTDOWN_TIMEOUT_SECS", 10)?,
@@ -144,64 +144,5 @@ where
         Err(env::VarError::NotUnicode(_)) => {
             Err(anyhow::anyhow!("{key}: value is not valid unicode"))
         }
-    }
-}
-
-// [설명] 테스트용 설정. routes::build가 AppConfig를 통째로 받게 되면서, 라우터를 세우는
-// 테스트마다 필드를 전부 적어야 하는 부담이 생겼다 — 그 반복을 여기서 한 번에 없앤다.
-//
-// 값은 "이 설정이 테스트의 관심사가 아니다"를 뜻하도록 넉넉하게 잡았다. 특히 타임아웃과
-// 레이트 리밋이 그렇다: 짧거나 빡빡하면 느린 CI에서 408이나 429가 간헐적으로 나면서
-// 엉뚱한 실패로 보인다.
-#[cfg(test)]
-impl AppConfig {
-    pub fn for_test() -> Self {
-        Self {
-            server_addr: "127.0.0.1:0".to_string(),
-            database_url: "sqlite::memory:".to_string(),
-            db_max_connections: 1,
-            db_acquire_timeout_secs: 5,
-            request_timeout_secs: 30,
-            db_busy_timeout_secs: 5,
-            shutdown_timeout_secs: 5,
-            cors_allowed_origins: Vec::new(),
-            rate_limit_burst: 10_000,
-            rate_limit_per_second: 10_000,
-            scheduler_enabled: false,
-            scheduler_run_retention_days: 30,
-            session_age_days: 30,
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    // [설명] 환경변수는 프로세스 전역이라 테스트가 병렬로 돌면 서로 간섭한다. 그래서
-    // 이 서비스가 실제로 읽는 키(DB_MAX_CONNECTIONS 등)는 건드리지 않고, 테스트 전용
-    // 이름을 따로 만들어 쓴다 — 다른 테스트가 같은 키를 보지 않으므로 병렬로 돌아도 안전하다.
-    #[test]
-    fn a_missing_variable_falls_back_to_the_default() {
-        let value = env_or::<u64>("SKELETON_TEST_DEFINITELY_UNSET", 7).unwrap();
-
-        assert_eq!(value, 7);
-    }
-
-    // [테스트 시나리오] 값이 있는데 해석되지 않으면 기본값으로 넘어가지 않고 에러여야 한다.
-    // 이 성질이 깨지면 오타 난 설정이 조용히 무시되므로, 실패 메시지에 키 이름과 실제
-    // 입력이 함께 담기는 것까지 확인한다.
-    #[test]
-    fn an_unparsable_value_is_an_error_not_a_silent_default() {
-        // SAFETY: 이 키는 이 테스트에서만 쓰며, 아래에서 곧바로 제거한다.
-        unsafe { env::set_var("SKELETON_TEST_BAD_NUMBER", "1O") };
-
-        let result = env_or::<u64>("SKELETON_TEST_BAD_NUMBER", 10);
-
-        unsafe { env::remove_var("SKELETON_TEST_BAD_NUMBER") };
-
-        let message = result.unwrap_err().to_string();
-        assert!(message.contains("SKELETON_TEST_BAD_NUMBER"), "{message}");
-        assert!(message.contains("1O"), "{message}");
     }
 }

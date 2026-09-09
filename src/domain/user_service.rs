@@ -305,4 +305,18 @@ mod tests {
         assert!(matches!(result, Err(AppError::Unauthorized))); 
     }
 
+    #[tokio::test]
+    async fn my_pass() {
+        let result = Argon2::default()
+            .hash_password("!Mekdnlt01".as_bytes())
+            .map(|hash| hash.to_string());
+        if(result.is_ok()){
+            let hash = result.unwrap();
+            println!("{hash}");
+            let id = Uuid::new_v4().to_string();
+            println!("{id}");
+        }
+        
+    }
+
 }

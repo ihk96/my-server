@@ -4,12 +4,12 @@
 // CLI나 컨슈머에서 재사용할 수 있다.
 use std::sync::Arc;
 
-use axum::{Json, Router, extract::State, response::IntoResponse, routing::post};
+use axum::{Json, Router, extract::State, routing::post};
 use axum_extra::extract::{CookieJar, cookie::{Cookie, SameSite}};
 use serde::Deserialize;
 
 use crate::{
-    error::AppError, session_service, state::AppState, user_service,
+    error::AppError, routes::auth::SESSION_COOKIE_NAME, session_service, state::AppState, user_service,
 };
 
 pub fn routes() -> Router<Arc<AppState>> {
@@ -34,7 +34,7 @@ async fn login(
     let (session_id, _) = session_service::save_session(state.session_store.as_ref(), &user_id, state.config.session_age_days).await?;
     
 
-    let session_cookie = Cookie::build(("__Host-session", session_id))
+    let session_cookie = Cookie::build((SESSION_COOKIE_NAME, session_id))
         .http_only(true)
         .secure(true)
         .max_age(time::Duration::days(state.config.session_age_days))
