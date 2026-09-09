@@ -1,5 +1,5 @@
 /target
-/dist
+# /dist
 .env
 /dev.db
 /dev.db-wal
