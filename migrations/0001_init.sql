@@ -25,7 +25,7 @@ create table sessions (
     user_id    text not null,
     created_at text not null,
     expires_at text not null,
-    last_accessed_at text not null
+    last_accessed_at text
 );
 
 insert into users (id, login_id, password_hash, name, created_at, last_login_at)
